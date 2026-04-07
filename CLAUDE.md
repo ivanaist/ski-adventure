@@ -18,7 +18,7 @@ with help from aunt Ivana using Claude Code.
 
 ## Deployment
 - Deploy via GitHub Pages
-- Repository: https://github.com/ivikiwiiiii/ski-adventure
+- Repository: https://github.com/ivanaist/ski-adventure
 
 ## How to run
 Open index.html in any browser.
