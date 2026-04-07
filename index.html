@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Ski Adventure</title>
     <style>
         * {
@@ -18,7 +18,32 @@
             height: 100vh;
             overflow: hidden;
             font-family: Arial, sans-serif;
+            touch-action: none;
         }
+        /* Mobile touch button */
+        #mobileJump {
+            display: none;
+            position: fixed;
+            bottom: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 160px;
+            height: 56px;
+            border-radius: 16px;
+            background: rgba(155,89,182,0.25);
+            border: 3px solid rgba(155,89,182,0.5);
+            color: rgba(255,255,255,0.8);
+            font-family: Arial, sans-serif;
+            font-size: 18px;
+            font-weight: bold;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            z-index: 20;
+        }
+        #mobileJump:active { background: rgba(155,89,182,0.5); }
         canvas {
             border: 4px solid #4a90d9;
             border-radius: 12px;
@@ -84,41 +109,65 @@
 <body>
     <div id="levelDisplay">Level 1</div>
     <canvas id="game"></canvas>
+    <div id="mobileJump">JUMP</div>
 
     <div id="startScreen">
         <h1>Ski Adventure</h1>
         <p>Help the skier reach the finish line!</p>
         <p>Dodge the rocks and trees!</p>
         <br>
-        <p>
-            <span class="key-hint">&larr;</span>
-            <span class="key-hint">&rarr;</span> Move
-        </p>
-        <p><span class="key-hint">Space</span> Jump</p>
+        <div id="controlsDesktop">
+            <p>
+                <span class="key-hint">&larr;</span>
+                <span class="key-hint">&rarr;</span> Move
+            </p>
+            <p><span class="key-hint">Space</span> Jump</p>
+        </div>
+        <div id="controlsMobile" style="display:none;">
+            <p style="font-size:18px;">Touch left/right side to move</p>
+            <p style="font-size:18px;">JUMP button to jump</p>
+        </div>
         <br>
-        <p class="subtitle">Press Space to start!</p>
+        <p class="subtitle" id="startHint">Press Space to start!</p>
+        <p style="color:#aaa;font-size:14px;font-family:monospace;margin-top:16px;">Game by Eero Puhakka</p>
     </div>
     <p id="gameCredit" style="position:fixed;bottom:15px;left:20px;color:#888;font-size:18px;font-family:monospace;margin:0;z-index:100;">Game by Eero Puhakka</p>
 
     <div id="crashScreen" style="display:none;">
         <h2>Oops! You crashed!</h2>
-        <p>Press Space to try again!</p>
+        <p id="crashHint">Press Space to try again!</p>
     </div>
 
     <div id="winScreen" style="display:none;">
         <h2>You made it!</h2>
         <p id="winText">Level complete!</p>
-        <p>Press Space for next level!</p>
+        <p id="winHint">Press Space for next level!</p>
     </div>
 
     <script>
         const canvas = document.getElementById('game');
         const ctx = canvas.getContext('2d');
 
+        const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+        // Switch UI for mobile
+        if (isMobile) {
+            document.getElementById('controlsDesktop').style.display = 'none';
+            document.getElementById('controlsMobile').style.display = 'block';
+            document.getElementById('startHint').textContent = 'Tap to start!';
+            document.getElementById('crashHint').textContent = 'Tap to try again!';
+            document.getElementById('winHint').textContent = 'Tap for next level!';
+        }
+
         // Make canvas fill most of the screen
         function resizeCanvas() {
-            canvas.width = Math.min(500, window.innerWidth - 40);
-            canvas.height = Math.min(700, window.innerHeight - 40);
+            if (isMobile) {
+                canvas.width = Math.min(500, window.innerWidth - 16);
+                canvas.height = Math.min(700, window.innerHeight - 90); // leave room for jump button
+            } else {
+                canvas.width = Math.min(500, window.innerWidth - 40);
+                canvas.height = Math.min(700, window.innerHeight - 40);
+            }
         }
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
@@ -253,43 +302,74 @@
         window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
         // Touch controls for mobile
-        let touchX = null;
+        let touchMoving = null; // 'left' or 'right'
+
         canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            const touch = e.touches[0];
-            const rect = canvas.getBoundingClientRect();
-            touchX = touch.clientX - rect.left;
 
             if (state === 'start') {
                 state = 'playing';
                 document.getElementById('startScreen').style.display = 'none';
+                document.getElementById('gameCredit').style.display = 'none';
+                if (isMobile) document.getElementById('mobileJump').style.display = 'flex';
                 startLevel(1);
+                return;
             } else if (state === 'crashed') {
                 state = 'playing';
                 document.getElementById('crashScreen').style.display = 'none';
+                if (isMobile) document.getElementById('mobileJump').style.display = 'flex';
                 startLevel(currentLevel);
+                return;
             } else if (state === 'won') {
                 document.getElementById('winScreen').style.display = 'none';
                 if (currentLevel < totalLevels) {
                     currentLevel++;
                     state = 'playing';
+                    if (isMobile) document.getElementById('mobileJump').style.display = 'flex';
                     startLevel(currentLevel);
                 }
-            } else if (state === 'playing') {
-                // Tap to jump
-                if (!skier.jumping) {
-                    skier.jumping = true;
-                    skier.jumpTimer = skier.jumpDuration;
-                }
+                return;
             }
-        });
+
+            // During gameplay: touch left/right side to move
+            if (state === 'playing') {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.touches[0].clientX - rect.left;
+                const mid = rect.width / 2;
+                touchMoving = x < mid ? 'left' : 'right';
+            }
+        }, { passive: false });
+
         canvas.addEventListener('touchmove', (e) => {
             e.preventDefault();
-            const touch = e.touches[0];
-            const rect = canvas.getBoundingClientRect();
-            touchX = touch.clientX - rect.left;
-        });
-        canvas.addEventListener('touchend', () => { touchX = null; });
+            if (state === 'playing') {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.touches[0].clientX - rect.left;
+                const mid = rect.width / 2;
+                touchMoving = x < mid ? 'left' : 'right';
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            touchMoving = null;
+        }, { passive: false });
+
+        // Jump button for mobile
+        const jumpBtn = document.getElementById('mobileJump');
+        jumpBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (state === 'playing' && !skier.jumping && !shopOpen) {
+                skier.jumping = true;
+                skier.jumpTimer = skier.jumpDuration;
+            }
+        }, { passive: false });
+
+        jumpBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        }, { passive: false });
 
         // Obstacles
         let obstacles = [];
@@ -904,11 +984,8 @@
             }
 
             // Touch controls
-            if (touchX !== null) {
-                const center = skier.x + skier.width / 2;
-                if (touchX < center - 20) skier.x -= skier.speed;
-                if (touchX > center + 20) skier.x += skier.speed;
-            }
+            if (touchMoving === 'left') skier.x -= skier.speed;
+            if (touchMoving === 'right') skier.x += skier.speed;
 
             // Keep skier on screen
             if (skier.x < 0) skier.x = 0;
@@ -1054,8 +1131,8 @@
             ctx.textAlign = 'left';
             ctx.fillText(coins, 42, 32);
 
-            // Shop hint
-            if (state === 'playing') {
+            // Shop hint (desktop only)
+            if (state === 'playing' && !isMobile) {
                 ctx.fillStyle = 'rgba(255,255,255,0.6)';
                 ctx.font = '11px Arial';
                 ctx.fillText('S = Shop', 10, 56);
