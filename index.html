@@ -13,6 +13,7 @@
         body {
             background: #87CEEB;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             height: 100vh;
@@ -20,30 +21,39 @@
             font-family: Arial, sans-serif;
             touch-action: none;
         }
-        /* Mobile touch button */
-        #mobileJump {
+        #gameWrapper {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        /* Mobile buttons below the game */
+        #mobileControls {
             display: none;
-            position: fixed;
-            bottom: 12px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 160px;
-            height: 56px;
-            border-radius: 16px;
+            flex-direction: row;
+            gap: 10px;
+            margin-top: 6px;
+            z-index: 20;
+        }
+        .mob-btn {
+            border-radius: 14px;
             background: rgba(155,89,182,0.25);
             border: 3px solid rgba(155,89,182,0.5);
-            color: rgba(255,255,255,0.8);
+            color: rgba(100,50,140,0.9);
             font-family: Arial, sans-serif;
-            font-size: 18px;
+            font-size: 15px;
             font-weight: bold;
+            display: flex;
             align-items: center;
             justify-content: center;
             user-select: none;
             -webkit-user-select: none;
             touch-action: none;
-            z-index: 20;
+            padding: 12px 24px;
         }
-        #mobileJump:active { background: rgba(155,89,182,0.5); }
+        .mob-btn:active { background: rgba(155,89,182,0.45); }
+        #mobJump { padding: 12px 40px; font-size: 18px; }
+        #mobShop { font-size: 13px; padding: 10px 16px; }
         canvas {
             border: 4px solid #4a90d9;
             border-radius: 12px;
@@ -51,15 +61,21 @@
         }
         #startScreen, #crashScreen, #winScreen {
             position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             background: rgba(255, 255, 255, 0.92);
             border-radius: 20px;
-            padding: 40px;
+            padding: 30px;
             text-align: center;
             border: 4px solid #9b59b6;
+            max-width: 90%;
+            max-height: 90%;
+            z-index: 15;
         }
         #startScreen h1 {
             font-size: 48px;
@@ -93,9 +109,10 @@
         }
         #levelDisplay {
             position: absolute;
-            top: 20px;
+            top: 8px;
             left: 50%;
             transform: translateX(-50%);
+            z-index: 16;
             font-size: 28px;
             font-weight: bold;
             color: #9b59b6;
@@ -107,42 +124,48 @@
     </style>
 </head>
 <body>
-    <div id="levelDisplay">Level 1</div>
-    <canvas id="game"></canvas>
-    <div id="mobileJump">JUMP</div>
+    <div id="gameWrapper">
+        <div id="levelDisplay">Level 1</div>
+        <canvas id="game"></canvas>
 
-    <div id="startScreen">
-        <h1>Ski Adventure</h1>
-        <p>Help the skier reach the finish line!</p>
-        <p>Dodge the rocks and trees!</p>
-        <br>
-        <div id="controlsDesktop">
-            <p>
-                <span class="key-hint">&larr;</span>
-                <span class="key-hint">&rarr;</span> Move
-            </p>
-            <p><span class="key-hint">Space</span> Jump</p>
+        <div id="mobileControls">
+            <div id="mobShop" class="mob-btn">SHOP</div>
+            <div id="mobJump" class="mob-btn">JUMP</div>
         </div>
-        <div id="controlsMobile" style="display:none;">
-            <p style="font-size:18px;">Touch left/right side to move</p>
-            <p style="font-size:18px;">JUMP button to jump</p>
+
+        <div id="startScreen">
+            <h1>Ski Adventure</h1>
+            <p>Help the skier reach the finish line!</p>
+            <p>Dodge the rocks and trees!</p>
+            <br>
+            <div id="controlsDesktop">
+                <p>
+                    <span class="key-hint">&larr;</span>
+                    <span class="key-hint">&rarr;</span> Move
+                </p>
+                <p><span class="key-hint">Space</span> Jump</p>
+            </div>
+            <div id="controlsMobile" style="display:none;">
+                <p style="font-size:18px;">Touch left/right side to move</p>
+                <p style="font-size:18px;">JUMP button to jump</p>
+            </div>
+            <br>
+            <p class="subtitle" id="startHint">Press Space to start!</p>
+            <p id="startCredit" style="color:#aaa;font-size:14px;font-family:monospace;margin-top:16px;">Game by Eero Puhakka</p>
         </div>
-        <br>
-        <p class="subtitle" id="startHint">Press Space to start!</p>
-        <p style="color:#aaa;font-size:14px;font-family:monospace;margin-top:16px;">Game by Eero Puhakka</p>
+
+        <div id="crashScreen" style="display:none;">
+            <h2>Oops! You crashed!</h2>
+            <p id="crashHint">Press Space to try again!</p>
+        </div>
+
+        <div id="winScreen" style="display:none;">
+            <h2>You made it!</h2>
+            <p id="winText">Level complete!</p>
+            <p id="winHint">Press Space for next level!</p>
+        </div>
     </div>
     <p id="gameCredit" style="position:fixed;bottom:15px;left:20px;color:#888;font-size:18px;font-family:monospace;margin:0;z-index:100;">Game by Eero Puhakka</p>
-
-    <div id="crashScreen" style="display:none;">
-        <h2>Oops! You crashed!</h2>
-        <p id="crashHint">Press Space to try again!</p>
-    </div>
-
-    <div id="winScreen" style="display:none;">
-        <h2>You made it!</h2>
-        <p id="winText">Level complete!</p>
-        <p id="winHint">Press Space for next level!</p>
-    </div>
 
     <script>
         const canvas = document.getElementById('game');
@@ -157,13 +180,25 @@
             document.getElementById('startHint').textContent = 'Tap to start!';
             document.getElementById('crashHint').textContent = 'Tap to try again!';
             document.getElementById('winHint').textContent = 'Tap for next level!';
+            document.getElementById('gameCredit').style.display = 'none'; // shown inside start screen instead
         }
 
         // Make canvas fill most of the screen
         function resizeCanvas() {
             if (isMobile) {
-                canvas.width = Math.min(500, window.innerWidth - 16);
-                canvas.height = Math.min(700, window.innerHeight - 90); // leave room for jump button
+                // Fit canvas within screen, leaving room for buttons below
+                const maxW = window.innerWidth - 10;
+                const maxH = window.innerHeight - 80;
+                // Keep aspect ratio roughly 500:700
+                const aspect = 500 / 700;
+                let w = maxW;
+                let h = w / aspect;
+                if (h > maxH) {
+                    h = maxH;
+                    w = h * aspect;
+                }
+                canvas.width = Math.min(500, Math.floor(w));
+                canvas.height = Math.min(700, Math.floor(h));
             } else {
                 canvas.width = Math.min(500, window.innerWidth - 40);
                 canvas.height = Math.min(700, window.innerHeight - 40);
@@ -304,20 +339,26 @@
         // Touch controls for mobile
         let touchMoving = null; // 'left' or 'right'
 
+        function showMobileControls() {
+            if (isMobile) document.getElementById('mobileControls').style.display = 'flex';
+        }
+        function hideMobileControls() {
+            if (isMobile) document.getElementById('mobileControls').style.display = 'none';
+        }
+
         canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
 
             if (state === 'start') {
                 state = 'playing';
                 document.getElementById('startScreen').style.display = 'none';
-                document.getElementById('gameCredit').style.display = 'none';
-                if (isMobile) document.getElementById('mobileJump').style.display = 'flex';
+                showMobileControls();
                 startLevel(1);
                 return;
             } else if (state === 'crashed') {
                 state = 'playing';
                 document.getElementById('crashScreen').style.display = 'none';
-                if (isMobile) document.getElementById('mobileJump').style.display = 'flex';
+                showMobileControls();
                 startLevel(currentLevel);
                 return;
             } else if (state === 'won') {
@@ -325,14 +366,14 @@
                 if (currentLevel < totalLevels) {
                     currentLevel++;
                     state = 'playing';
-                    if (isMobile) document.getElementById('mobileJump').style.display = 'flex';
+                    showMobileControls();
                     startLevel(currentLevel);
                 }
                 return;
             }
 
             // During gameplay: touch left/right side to move
-            if (state === 'playing') {
+            if (state === 'playing' && !shopOpen) {
                 const rect = canvas.getBoundingClientRect();
                 const x = e.touches[0].clientX - rect.left;
                 const mid = rect.width / 2;
@@ -342,7 +383,7 @@
 
         canvas.addEventListener('touchmove', (e) => {
             e.preventDefault();
-            if (state === 'playing') {
+            if (state === 'playing' && !shopOpen) {
                 const rect = canvas.getBoundingClientRect();
                 const x = e.touches[0].clientX - rect.left;
                 const mid = rect.width / 2;
@@ -355,9 +396,8 @@
             touchMoving = null;
         }, { passive: false });
 
-        // Jump button for mobile
-        const jumpBtn = document.getElementById('mobileJump');
-        jumpBtn.addEventListener('touchstart', (e) => {
+        // Mobile jump button
+        document.getElementById('mobJump').addEventListener('touchstart', (e) => {
             e.preventDefault();
             e.stopPropagation();
             if (state === 'playing' && !skier.jumping && !shopOpen) {
@@ -366,10 +406,55 @@
             }
         }, { passive: false });
 
-        jumpBtn.addEventListener('touchend', (e) => {
+        document.getElementById('mobJump').addEventListener('touchend', (e) => {
             e.preventDefault();
             e.stopPropagation();
         }, { passive: false });
+
+        // Mobile shop button
+        document.getElementById('mobShop').addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (state === 'playing' || shopOpen) {
+                shopOpen = !shopOpen;
+            }
+        }, { passive: false });
+
+        document.getElementById('mobShop').addEventListener('touchend', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        }, { passive: false });
+
+        // Touch navigation in shop
+        canvas.addEventListener('click', (e) => {
+            if (!shopOpen || !isMobile) return;
+            const rect = canvas.getBoundingClientRect();
+            const y = e.clientY - rect.top;
+            const scaleY = canvas.height / rect.height;
+            const canvasY = y * scaleY;
+            // Tap top half = scroll up, bottom half = scroll down
+            if (canvasY < canvas.height / 3) {
+                shopSelection = Math.max(0, shopSelection - 1);
+            } else if (canvasY > canvas.height * 2 / 3) {
+                shopSelection = Math.min(skiShop.length - 1, shopSelection + 1);
+            } else {
+                // Tap middle = buy/equip
+                const item = skiShop[shopSelection];
+                function equipItem(item) {
+                    if (item.type === 'ski') skiColor = item.color;
+                    else if (item.type === 'jacket') jacketColor = item.color;
+                    else if (item.type === 'helmet') helmetColor = item.color;
+                    else if (item.type === 'goggles') gogglesColor = item.color;
+                }
+                if (item.owned) {
+                    equipItem(item);
+                } else if (coins >= item.price) {
+                    coins -= item.price;
+                    item.owned = true;
+                    equipItem(item);
+                }
+            }
+        });
 
         // Obstacles
         let obstacles = [];
@@ -1050,11 +1135,13 @@
                         // Trees are too tall to jump over — always crash!
                         state = 'crashed';
                         document.getElementById('crashScreen').style.display = 'flex';
+                        hideMobileControls();
                         return;
                     } else if (!skier.jumping) {
                         // Hit a rock! Crash!
                         state = 'crashed';
                         document.getElementById('crashScreen').style.display = 'flex';
+                        hideMobileControls();
                         return;
                     }
                 }
@@ -1064,6 +1151,7 @@
             if (scrollY >= levelLength) {
                 state = 'dancing';
                 danceTimer = danceDuration;
+                hideMobileControls();
             }
         }
 
@@ -1224,7 +1312,12 @@
             ctx.fillStyle = '#888';
             ctx.font = '13px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText('Up/Down to browse, Enter to buy/wear, S to close', canvas.width / 2, canvas.height - 50);
+            if (isMobile) {
+                ctx.fillText('Tap top=up, bottom=down, middle=buy/wear', canvas.width / 2, canvas.height - 60);
+                ctx.fillText('Tap SHOP button to close', canvas.width / 2, canvas.height - 44);
+            } else {
+                ctx.fillText('Up/Down to browse, Enter to buy/wear, S to close', canvas.width / 2, canvas.height - 50);
+            }
             ctx.textAlign = 'left';
         }
 
