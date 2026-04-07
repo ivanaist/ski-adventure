@@ -14,12 +14,16 @@
             background: #87CEEB;
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start;
             align-items: center;
             height: 100vh;
+            padding-top: 8px;
             overflow: hidden;
             font-family: Arial, sans-serif;
             touch-action: none;
+        }
+        @media (min-width: 600px) {
+            body { justify-content: center; padding-top: 0; }
         }
         #gameWrapper {
             position: relative;
@@ -109,7 +113,7 @@
             top: 8px;
             left: 50%;
             transform: translateX(-50%);
-            z-index: 16;
+            z-index: 14;
             font-size: 28px;
             font-weight: bold;
             color: #9b59b6;
@@ -185,7 +189,7 @@
             if (isMobile) {
                 // Fit canvas within screen, leaving room for buttons below
                 const maxW = window.innerWidth - 10;
-                const maxH = window.innerHeight - 80;
+                const maxH = window.innerHeight - 65;
                 // Keep aspect ratio roughly 500:700
                 const aspect = 500 / 700;
                 let w = maxW;
@@ -457,10 +461,12 @@
         }, { passive: false });
 
         // Touch navigation in shop
-        canvas.addEventListener('click', (e) => {
+        let shopTouchHandled = false;
+        canvas.addEventListener('touchstart', function shopTouch(e) {
             if (!shopOpen || !isMobile) return;
+            shopTouchHandled = true;
             const rect = canvas.getBoundingClientRect();
-            const y = e.clientY - rect.top;
+            const y = e.touches[0].clientY - rect.top;
             const scaleY = canvas.height / rect.height;
             const canvasY = y * scaleY;
             // Tap top half = scroll up, bottom half = scroll down
