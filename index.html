@@ -411,22 +411,29 @@
             // During gameplay
             if (state === 'playing') {
                 if (shopOpen) {
-                    // Shop navigation: top third = up, bottom third = down, middle = buy
+                    // Tap directly on shop items
                     const rect = canvas.getBoundingClientRect();
                     const y = e.touches[0].clientY - rect.top;
                     const scaleY = canvas.height / rect.height;
                     const canvasY = y * scaleY;
-                    if (canvasY < canvas.height / 3) {
-                        shopSelection = Math.max(0, shopSelection - 1);
-                    } else if (canvasY > canvas.height * 2 / 3) {
-                        shopSelection = Math.min(skiShop.length - 1, shopSelection + 1);
-                    } else {
-                        const item = skiShop[shopSelection];
-                        function equipItemTouch(item) {
-                            if (item.type === 'ski') skiColor = item.color;
-                            else if (item.type === 'jacket') jacketColor = item.color;
-                            else if (item.type === 'helmet') helmetColor = item.color;
-                            else if (item.type === 'goggles') gogglesColor = item.color;
+
+                    // Find which item was tapped
+                    let tappedItem = null;
+                    for (const sr of shopItemRects) {
+                        if (canvasY >= sr.y && canvasY < sr.y + sr.h) {
+                            tappedItem = sr.index;
+                            break;
+                        }
+                    }
+
+                    if (tappedItem !== null) {
+                        shopSelection = tappedItem;
+                        const item = skiShop[tappedItem];
+                        function equipItemTouch(it) {
+                            if (it.type === 'ski') skiColor = it.color;
+                            else if (it.type === 'jacket') jacketColor = it.color;
+                            else if (it.type === 'helmet') helmetColor = it.color;
+                            else if (it.type === 'goggles') gogglesColor = it.color;
                         }
                         if (item.owned) {
                             equipItemTouch(item);
@@ -435,6 +442,12 @@
                             item.owned = true;
                             equipItemTouch(item);
                         }
+                    } else if (canvasY < 100) {
+                        // Tap near top — scroll up
+                        shopSelection = Math.max(0, shopSelection - 3);
+                    } else if (canvasY > canvas.height - 70) {
+                        // Tap near bottom — scroll down
+                        shopSelection = Math.min(skiShop.length - 1, shopSelection + 3);
                     }
                 } else {
                     // Touch left/right side to move
@@ -1268,91 +1281,112 @@
             }
         }
 
+        // Store item row positions for mobile tap detection
+        let shopItemRects = [];
+
+        function isWearingItem(item) {
+            return (item.type === 'ski' && item.color === skiColor) ||
+                   (item.type === 'jacket' && item.color === jacketColor) ||
+                   (item.type === 'helmet' && item.color === helmetColor) ||
+                   (item.type === 'goggles' && item.color === gogglesColor);
+        }
+
         function drawShop() {
             // Shop background
             ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             ctx.fillStyle = 'white';
-            ctx.fillRect(30, 40, canvas.width - 60, canvas.height - 80);
+            ctx.fillRect(20, 30, canvas.width - 40, canvas.height - 60);
             ctx.strokeStyle = '#f1c40f';
             ctx.lineWidth = 4;
-            ctx.strokeRect(30, 40, canvas.width - 60, canvas.height - 80);
+            ctx.strokeRect(20, 30, canvas.width - 40, canvas.height - 60);
 
             // Title
             ctx.fillStyle = '#9b59b6';
-            ctx.font = 'bold 28px Arial';
+            ctx.font = 'bold 24px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText('Ski Shop', canvas.width / 2, 80);
+            ctx.fillText('Ski Shop', canvas.width / 2, 62);
 
             // Coins
             ctx.fillStyle = '#333';
-            ctx.font = 'bold 18px Arial';
-            ctx.fillText('Your coins: ' + coins, canvas.width / 2, 110);
+            ctx.font = 'bold 16px Arial';
+            ctx.fillText('Coins: ' + coins, canvas.width / 2, 86);
 
-            // Ski options — scroll if needed
-            const startY = 130;
-            const itemH = 38;
-            const maxVisible = Math.floor((canvas.height - 200) / itemH);
+            // Items list — single line per item, tappable on mobile
+            const startY = 100;
+            const itemH = isMobile ? 32 : 38;
+            const maxVisible = Math.floor((canvas.height - 170) / itemH);
             let scrollOffset = Math.max(0, shopSelection - maxVisible + 2);
+            shopItemRects = [];
+
             for (let i = scrollOffset; i < Math.min(skiShop.length, scrollOffset + maxVisible); i++) {
                 const item = skiShop[i];
                 const y = startY + (i - scrollOffset) * itemH;
                 const selected = i === shopSelection;
+                const wearing = isWearingItem(item);
 
                 // Highlight selected
                 if (selected) {
                     ctx.fillStyle = '#f0e6ff';
-                    ctx.fillRect(40, y, canvas.width - 80, itemH - 5);
+                    ctx.fillRect(30, y, canvas.width - 60, itemH - 2);
                 }
 
-                // Color preview
+                // Store rect for tap detection
+                shopItemRects.push({ index: i, y: y, h: itemH });
+
+                // Color swatch
                 if (item.color === 'rainbow') {
                     const t = Date.now() * 0.005;
                     ctx.fillStyle = `hsl(${(t * 60) % 360}, 80%, 60%)`;
                 } else {
                     ctx.fillStyle = item.color;
                 }
-                if (item.type === 'ski') {
-                    ctx.fillRect(55, y + 10, 40, 10);
-                } else {
-                    // Jacket shape
-                    ctx.fillRect(60, y + 5, 24, 22);
-                    ctx.fillRect(54, y + 5, 8, 16);
-                    ctx.fillRect(82, y + 5, 8, 16);
-                }
+                ctx.fillRect(40, y + 4, 22, itemH - 10);
 
-                // Name
-                ctx.fillStyle = '#333';
-                ctx.font = 'bold 16px Arial';
+                // Name + status on one line
+                ctx.font = 'bold 14px Arial';
                 ctx.textAlign = 'left';
-                ctx.fillText(item.name, 110, y + 24);
+                ctx.fillStyle = '#333';
+                ctx.fillText(item.name, 72, y + itemH / 2 + 1);
 
-                // Status
-                ctx.font = '14px Arial';
-                const isWearing = (item.type === 'ski' && item.color === skiColor) ||
-                                  (item.type === 'jacket' && item.color === jacketColor);
-                if (isWearing) {
+                // Status badge on the right
+                ctx.textAlign = 'right';
+                ctx.font = 'bold 12px Arial';
+                if (wearing) {
                     ctx.fillStyle = '#27ae60';
-                    ctx.fillText('WEARING', 110, y + 42);
+                    ctx.fillText('WEARING', canvas.width - 45, y + itemH / 2 + 1);
                 } else if (item.owned) {
                     ctx.fillStyle = '#3498db';
-                    ctx.fillText('Owned - press Enter to wear', 110, y + 42);
+                    ctx.fillText(isMobile ? 'TAP TO WEAR' : 'OWNED', canvas.width - 45, y + itemH / 2 + 1);
                 } else {
                     ctx.fillStyle = '#e67e22';
-                    ctx.fillText(item.price + ' coins', 110, y + 42);
+                    ctx.fillText(item.price + '$', canvas.width - 45, y + itemH / 2 + 1);
                 }
+            }
+
+            // Scroll indicator
+            if (scrollOffset > 0) {
+                ctx.fillStyle = '#999';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('▲ more above', canvas.width / 2, startY - 4);
+            }
+            if (scrollOffset + maxVisible < skiShop.length) {
+                ctx.fillStyle = '#999';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('▼ more below', canvas.width / 2, canvas.height - 68);
             }
 
             // Instructions
             ctx.fillStyle = '#888';
-            ctx.font = '13px Arial';
+            ctx.font = '12px Arial';
             ctx.textAlign = 'center';
             if (isMobile) {
-                ctx.fillText('Tap top=up, bottom=down, middle=buy/wear', canvas.width / 2, canvas.height - 60);
-                ctx.fillText('Tap SHOP button to close', canvas.width / 2, canvas.height - 44);
+                ctx.fillText('Tap item to select/buy/wear. SHOP to close.', canvas.width / 2, canvas.height - 42);
             } else {
-                ctx.fillText('Up/Down to browse, Enter to buy/wear, S to close', canvas.width / 2, canvas.height - 50);
+                ctx.fillText('Up/Down to browse, Enter to buy/wear, S to close', canvas.width / 2, canvas.height - 42);
             }
             ctx.textAlign = 'left';
         }
