@@ -133,6 +133,8 @@
         let coins = 0;
         let skiColor = '#ff69b4'; // start with pink
         let jacketColor = '#9b59b6'; // start with purple
+        let helmetColor = '#8e44ad'; // start with purple
+        let gogglesColor = '#f39c12'; // start with orange
         const skiShop = [
             { name: 'Pink Skis', color: '#ff69b4', price: 0, owned: true, type: 'ski' },
             { name: 'Red Skis', color: '#e74c3c', price: 5, owned: false, type: 'ski' },
@@ -150,6 +152,24 @@
             { name: 'Black Jacket', color: '#2c3e50', price: 20, owned: false, type: 'jacket' },
             { name: 'White Jacket', color: '#ecf0f1', price: 25, owned: false, type: 'jacket' },
             { name: 'Rainbow Jacket', color: 'rainbow', price: 50, owned: false, type: 'jacket' },
+            { name: 'Purple Helmet', color: '#8e44ad', price: 0, owned: true, type: 'helmet' },
+            { name: 'Red Helmet', color: '#e74c3c', price: 5, owned: false, type: 'helmet' },
+            { name: 'Blue Helmet', color: '#3498db', price: 10, owned: false, type: 'helmet' },
+            { name: 'Pink Helmet', color: '#ff69b4', price: 10, owned: false, type: 'helmet' },
+            { name: 'Green Helmet', color: '#2ecc71', price: 15, owned: false, type: 'helmet' },
+            { name: 'Yellow Helmet', color: '#f1c40f', price: 15, owned: false, type: 'helmet' },
+            { name: 'Black Helmet', color: '#2c3e50', price: 20, owned: false, type: 'helmet' },
+            { name: 'White Helmet', color: '#ecf0f1', price: 25, owned: false, type: 'helmet' },
+            { name: 'Rainbow Helmet', color: 'rainbow', price: 50, owned: false, type: 'helmet' },
+            { name: 'Orange Goggles', color: '#f39c12', price: 0, owned: true, type: 'goggles' },
+            { name: 'Red Goggles', color: '#e74c3c', price: 5, owned: false, type: 'goggles' },
+            { name: 'Blue Goggles', color: '#3498db', price: 10, owned: false, type: 'goggles' },
+            { name: 'Pink Goggles', color: '#ff69b4', price: 10, owned: false, type: 'goggles' },
+            { name: 'Green Goggles', color: '#2ecc71', price: 15, owned: false, type: 'goggles' },
+            { name: 'Yellow Goggles', color: '#f1c40f', price: 15, owned: false, type: 'goggles' },
+            { name: 'Black Goggles', color: '#2c3e50', price: 20, owned: false, type: 'goggles' },
+            { name: 'White Goggles', color: '#ecf0f1', price: 25, owned: false, type: 'goggles' },
+            { name: 'Rainbow Goggles', color: 'rainbow', price: 50, owned: false, type: 'goggles' },
         ];
         let shopOpen = false;
         let shopSelection = 0;
@@ -212,14 +232,18 @@
                 }
                 if (e.code === 'Enter') {
                     const item = skiShop[shopSelection];
-                    if (item.owned) {
+                    function equipItem(item) {
                         if (item.type === 'ski') skiColor = item.color;
-                        else jacketColor = item.color;
+                        else if (item.type === 'jacket') jacketColor = item.color;
+                        else if (item.type === 'helmet') helmetColor = item.color;
+                        else if (item.type === 'goggles') gogglesColor = item.color;
+                    }
+                    if (item.owned) {
+                        equipItem(item);
                     } else if (coins >= item.price) {
                         coins -= item.price;
                         item.owned = true;
-                        if (item.type === 'ski') skiColor = item.color;
-                        else jacketColor = item.color;
+                        equipItem(item);
                     }
                 }
             }
@@ -423,16 +447,26 @@
             ctx.fillRect(x + 7, y + 5, 3, 12);
             ctx.fillRect(x + 20, y + 5, 3, 12);
 
-            // Helmet/hat (purple)
-            ctx.fillStyle = '#8e44ad';
+            // Helmet/hat
+            if (helmetColor === 'rainbow') {
+                const t = Date.now() * 0.005;
+                ctx.fillStyle = `hsl(${(t * 60) % 360}, 80%, 60%)`;
+            } else {
+                ctx.fillStyle = helmetColor;
+            }
             ctx.beginPath();
             ctx.arc(x + 15, y + 3, 9, Math.PI, Math.PI * 2);
             ctx.fill();
 
             // Goggles
-            ctx.fillStyle = '#f39c12';
+            if (gogglesColor === 'rainbow') {
+                const t = Date.now() * 0.005;
+                ctx.fillStyle = `hsl(${(t * 60 + 120) % 360}, 80%, 60%)`;
+            } else {
+                ctx.fillStyle = gogglesColor;
+            }
             ctx.fillRect(x + 9, y + 6, 12, 4);
-            ctx.fillStyle = '#2ecc71';
+            ctx.fillStyle = '#fff';
             ctx.fillRect(x + 10, y + 7, 4, 2);
             ctx.fillRect(x + 16, y + 7, 4, 2);
 
@@ -512,16 +546,26 @@
             // Long hair trailing behind
             ctx.fillRect(-8, 1, 4, 14);
 
-            // Helmet (purple)
-            ctx.fillStyle = '#8e44ad';
+            // Helmet
+            if (helmetColor === 'rainbow') {
+                const t = Date.now() * 0.005;
+                ctx.fillStyle = `hsl(${(t * 60) % 360}, 80%, 60%)`;
+            } else {
+                ctx.fillStyle = helmetColor;
+            }
             ctx.beginPath();
             ctx.arc(1, -1, 8, Math.PI, Math.PI * 2);
             ctx.fill();
 
             // Goggle (side — just one)
-            ctx.fillStyle = '#f39c12';
+            if (gogglesColor === 'rainbow') {
+                const t = Date.now() * 0.005;
+                ctx.fillStyle = `hsl(${(t * 60 + 120) % 360}, 80%, 60%)`;
+            } else {
+                ctx.fillStyle = gogglesColor;
+            }
             ctx.fillRect(3, 2, 6, 4);
-            ctx.fillStyle = '#2ecc71';
+            ctx.fillStyle = '#fff';
             ctx.fillRect(4, 3, 4, 2);
 
             // Front arm — stretched out for balance!
@@ -740,7 +784,12 @@
             ctx.fillRect(5, 5, 3, 12);
 
             // Hat
-            ctx.fillStyle = '#8e44ad';
+            if (helmetColor === 'rainbow') {
+                const t = Date.now() * 0.005;
+                ctx.fillStyle = `hsl(${(t * 60) % 360}, 80%, 60%)`;
+            } else {
+                ctx.fillStyle = helmetColor;
+            }
             ctx.beginPath();
             ctx.arc(0, 3, 9, Math.PI, Math.PI * 2);
             ctx.fill();
