@@ -97,8 +97,8 @@
         <p><span class="key-hint">Space</span> Jump</p>
         <br>
         <p class="subtitle">Press Space to start!</p>
-        <p style="position:fixed;bottom:15px;left:20px;color:#888;font-size:18px;font-family:monospace;">Game by Eero Puhakka</p>
     </div>
+    <p id="gameCredit" style="position:fixed;bottom:15px;left:20px;color:#888;font-size:18px;font-family:monospace;margin:0;z-index:100;">Game by Eero Puhakka</p>
 
     <div id="crashScreen" style="display:none;">
         <h2>Oops! You crashed!</h2>
@@ -198,6 +198,7 @@
                 if (state === 'start') {
                     state = 'playing';
                     document.getElementById('startScreen').style.display = 'none';
+                    document.getElementById('gameCredit').style.display = 'none';
                     startLevel(1);
                 } else if (state === 'crashed') {
                     state = 'playing';
