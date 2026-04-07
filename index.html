@@ -123,11 +123,36 @@
         window.addEventListener('resize', resizeCanvas);
 
         // Game state
-        let state = 'start'; // start, playing, crashed, won
+        let state = 'start'; // start, playing, crashed, dancing, won
         let currentLevel = 1;
         const totalLevels = 20;
         let scrollY = 0;
         let levelLength = 3000;
+        let danceTimer = 0;
+        const danceDuration = 120; // 2 seconds of dancing
+        let coins = 0;
+        let skiColor = '#ff69b4'; // start with pink
+        let jacketColor = '#9b59b6'; // start with purple
+        const skiShop = [
+            { name: 'Pink Skis', color: '#ff69b4', price: 0, owned: true, type: 'ski' },
+            { name: 'Red Skis', color: '#e74c3c', price: 5, owned: false, type: 'ski' },
+            { name: 'Blue Skis', color: '#3498db', price: 10, owned: false, type: 'ski' },
+            { name: 'Gold Skis', color: '#f1c40f', price: 15, owned: false, type: 'ski' },
+            { name: 'Green Skis', color: '#2ecc71', price: 20, owned: false, type: 'ski' },
+            { name: 'Purple Skis', color: '#9b59b6', price: 25, owned: false, type: 'ski' },
+            { name: 'Rainbow Skis', color: 'rainbow', price: 50, owned: false, type: 'ski' },
+            { name: 'Purple Jacket', color: '#9b59b6', price: 0, owned: true, type: 'jacket' },
+            { name: 'Red Jacket', color: '#e74c3c', price: 5, owned: false, type: 'jacket' },
+            { name: 'Blue Jacket', color: '#3498db', price: 10, owned: false, type: 'jacket' },
+            { name: 'Pink Jacket', color: '#ff69b4', price: 10, owned: false, type: 'jacket' },
+            { name: 'Green Jacket', color: '#2ecc71', price: 15, owned: false, type: 'jacket' },
+            { name: 'Yellow Jacket', color: '#f1c40f', price: 15, owned: false, type: 'jacket' },
+            { name: 'Black Jacket', color: '#2c3e50', price: 20, owned: false, type: 'jacket' },
+            { name: 'White Jacket', color: '#ecf0f1', price: 25, owned: false, type: 'jacket' },
+            { name: 'Rainbow Jacket', color: 'rainbow', price: 50, owned: false, type: 'jacket' },
+        ];
+        let shopOpen = false;
+        let shopSelection = 0;
 
         // Skier
         const skier = {
@@ -139,7 +164,8 @@
             jumping: false,
             jumpTimer: 0,
             jumpDuration: 30,
-            onRail: false
+            onRail: false,
+            slideDir: 0
         };
 
         // Controls
@@ -168,9 +194,33 @@
                         state = 'start';
                         document.getElementById('startScreen').style.display = 'flex';
                     }
-                } else if (state === 'playing' && !skier.jumping) {
+                } else if (state === 'playing' && !shopOpen && !skier.jumping) {
                     skier.jumping = true;
                     skier.jumpTimer = skier.jumpDuration;
+                }
+            }
+            // Shop controls
+            if (e.code === 'KeyS' && (state === 'playing' || shopOpen)) {
+                shopOpen = !shopOpen;
+            }
+            if (shopOpen) {
+                if (e.code === 'ArrowUp') {
+                    shopSelection = Math.max(0, shopSelection - 1);
+                }
+                if (e.code === 'ArrowDown') {
+                    shopSelection = Math.min(skiShop.length - 1, shopSelection + 1);
+                }
+                if (e.code === 'Enter') {
+                    const item = skiShop[shopSelection];
+                    if (item.owned) {
+                        if (item.type === 'ski') skiColor = item.color;
+                        else jacketColor = item.color;
+                    } else if (coins >= item.price) {
+                        coins -= item.price;
+                        item.owned = true;
+                        if (item.type === 'ski') skiColor = item.color;
+                        else jacketColor = item.color;
+                    }
                 }
             }
         });
@@ -234,15 +284,26 @@
             for (let i = 0; i < numObstacles; i++) {
                 const y = 300 + (i / numObstacles) * (levelLength - 500);
                 const x = margin + seededRandom() * (canvas.width - margin * 2);
-                const type = seededRandom() < 0.4 ? 'rock' : (seededRandom() < 0.7 ? 'tree' : 'rail');
+                const r = seededRandom();
+                const type = r < 0.3 ? 'rock' : (r < 0.55 ? 'tree' : (r < 0.8 ? 'rail' : 'ramp'));
 
-                if (type === 'rail') {
+                if (type === 'ramp') {
+                    const big = seededRandom() < 0.4;
+                    obstacles.push({
+                        type: 'ramp',
+                        x: x,
+                        y: y,
+                        width: big ? 45 : 16,
+                        height: big ? 100 : 35,
+                        big: big
+                    });
+                } else if (type === 'rail') {
                     obstacles.push({
                         type: 'rail',
-                        x: x - 30,
+                        x: x,
                         y: y,
-                        width: 80,
-                        height: 10
+                        width: 10,
+                        height: 120
                     });
                 } else if (type === 'tree') {
                     obstacles.push({
@@ -262,6 +323,21 @@
                     });
                 }
             }
+
+            // Add coins between obstacles
+            const numCoins = 5 + level * 2;
+            for (let i = 0; i < numCoins; i++) {
+                const y = 200 + seededRandom() * (levelLength - 400);
+                const x = margin + seededRandom() * (canvas.width - margin * 2);
+                obstacles.push({
+                    type: 'coin',
+                    x: x,
+                    y: y,
+                    width: 20,
+                    height: 20,
+                    collected: false
+                });
+            }
         }
 
         function startLevel(level) {
@@ -273,17 +349,27 @@
             skier.jumping = false;
             skier.jumpTimer = 0;
             skier.onRail = false;
+            skier.slideDir = 0;
             generateLevel(level);
         }
 
         // Drawing functions
         function drawSnow() {
-            // Snowy background with subtle lines
-            ctx.fillStyle = '#f5f9ff';
+            // Background changes at level 11 — night skiing!
+            let bgColor, lineColor;
+            if (currentLevel <= 10) {
+                bgColor = '#f5f9ff';      // white snow
+                lineColor = '#e8eef5';
+            } else {
+                bgColor = '#0d0d3b';      // dark blue night
+                lineColor = '#1a1a5e';
+            }
+
+            ctx.fillStyle = bgColor;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             // Snow texture lines
-            ctx.strokeStyle = '#e8eef5';
+            ctx.strokeStyle = lineColor;
             ctx.lineWidth = 1;
             for (let y = -scrollY % 40; y < canvas.height; y += 40) {
                 ctx.beginPath();
@@ -294,6 +380,11 @@
         }
 
         function drawSkier() {
+            if (skier.onRail) {
+                drawSkierOnRail();
+                return;
+            }
+
             const x = skier.x;
             let y = skier.y;
             const jumpOffset = skier.jumping ? 10 : 0;
@@ -308,8 +399,13 @@
 
             y -= jumpOffset;
 
-            // Body (purple)
-            ctx.fillStyle = '#9b59b6';
+            // Body (jacket)
+            if (jacketColor === 'rainbow') {
+                const t = Date.now() * 0.005;
+                ctx.fillStyle = `hsl(${(t * 60) % 360}, 80%, 60%)`;
+            } else {
+                ctx.fillStyle = jacketColor;
+            }
             ctx.fillRect(x + 8, y + 12, 14, 18);
 
             // Head
@@ -341,9 +437,14 @@
             ctx.fillRect(x + 16, y + 7, 4, 2);
 
             // Skis
-            ctx.fillStyle = '#ff69b4';
-            ctx.fillRect(x + 2, y + 30 + jumpOffset, 10, 12);
-            ctx.fillRect(x + 18, y + 30 + jumpOffset, 10, 12);
+            if (skiColor === 'rainbow') {
+                const t = Date.now() * 0.005;
+                ctx.fillStyle = `hsl(${(t * 60) % 360}, 80%, 60%)`;
+            } else {
+                ctx.fillStyle = skiColor;
+            }
+            ctx.fillRect(x + 2, y + 28 + jumpOffset, 10, 18);
+            ctx.fillRect(x + 18, y + 28 + jumpOffset, 10, 18);
 
             // Poles
             ctx.strokeStyle = '#777';
@@ -356,6 +457,99 @@
             ctx.moveTo(x + 25, y + 15);
             ctx.lineTo(x + 33, y + 35 + jumpOffset);
             ctx.stroke();
+        }
+
+        function drawSkierOnRail() {
+            const x = skier.x;
+            const y = skier.y - 10;
+            const dir = skier.slideDir || 1; // which way she faces
+
+            ctx.save();
+            ctx.translate(x + 15, y);
+
+            // Shadow below
+            ctx.fillStyle = 'rgba(0,0,0,0.15)';
+            ctx.beginPath();
+            ctx.ellipse(0, skier.height + 15, 18, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Flip based on slide direction
+            ctx.scale(dir, 1);
+
+            // Legs (bent, side view)
+            ctx.fillStyle = '#8e44ad';
+            ctx.fillRect(-3, 22, 8, 12);
+
+            // Single ski (side view — just one visible)
+            if (skiColor === 'rainbow') {
+                const t = Date.now() * 0.005;
+                ctx.fillStyle = `hsl(${(t * 60) % 360}, 80%, 60%)`;
+            } else {
+                ctx.fillStyle = skiColor;
+            }
+            ctx.fillRect(-6, 34, 14, 6);
+
+            // Body (jacket, side view — narrower)
+            if (jacketColor === 'rainbow') {
+                const t = Date.now() * 0.005;
+                ctx.fillStyle = `hsl(${(t * 60) % 360}, 80%, 60%)`;
+            } else {
+                ctx.fillStyle = jacketColor;
+            }
+            ctx.fillRect(-4, 8, 10, 16);
+
+            // Head (side view)
+            ctx.fillStyle = '#fdbcb4';
+            ctx.beginPath();
+            ctx.arc(1, 4, 7, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Hair (flowing behind)
+            ctx.fillStyle = '#8B4513';
+            ctx.beginPath();
+            ctx.arc(1, 1, 7, Math.PI, Math.PI * 2);
+            ctx.fill();
+            // Long hair trailing behind
+            ctx.fillRect(-8, 1, 4, 14);
+
+            // Helmet (purple)
+            ctx.fillStyle = '#8e44ad';
+            ctx.beginPath();
+            ctx.arc(1, -1, 8, Math.PI, Math.PI * 2);
+            ctx.fill();
+
+            // Goggle (side — just one)
+            ctx.fillStyle = '#f39c12';
+            ctx.fillRect(3, 2, 6, 4);
+            ctx.fillStyle = '#2ecc71';
+            ctx.fillRect(4, 3, 4, 2);
+
+            // Front arm — stretched out for balance!
+            ctx.strokeStyle = jacketColor === 'rainbow' ? `hsl(${(Date.now() * 0.005 * 60) % 360}, 80%, 60%)` : jacketColor;
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(4, 12);
+            ctx.lineTo(18, 4);
+            ctx.stroke();
+            // Hand
+            ctx.fillStyle = '#fdbcb4';
+            ctx.beginPath();
+            ctx.arc(18, 4, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Back arm — down for balance
+            ctx.strokeStyle = jacketColor === 'rainbow' ? `hsl(${(Date.now() * 0.005 * 60) % 360}, 80%, 60%)` : jacketColor;
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(-2, 12);
+            ctx.lineTo(-12, 18);
+            ctx.stroke();
+            ctx.fillStyle = '#fdbcb4';
+            ctx.beginPath();
+            ctx.arc(-12, 18, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
         }
 
         function drawTree(x, y) {
@@ -409,19 +603,192 @@
             ctx.fill();
         }
 
-        function drawRail(x, y, width) {
-            // Posts
+        function drawRail(x, y, height) {
+            // Posts at top and bottom
             ctx.fillStyle = '#e67e22';
-            ctx.fillRect(x, y - 15, 6, 25);
-            ctx.fillRect(x + width - 6, y - 15, 6, 25);
+            ctx.fillRect(x - 8, y, 26, 6);
+            ctx.fillRect(x - 8, y + height - 6, 26, 6);
 
-            // Rail bar
+            // Rail bar (vertical)
             ctx.fillStyle = '#f1c40f';
-            ctx.fillRect(x, y - 4, width, 8);
+            ctx.fillRect(x + 1, y, 8, height);
 
             // Shine
             ctx.fillStyle = '#f9e547';
-            ctx.fillRect(x + 4, y - 2, width - 8, 3);
+            ctx.fillRect(x + 2, y + 4, 3, height - 8);
+        }
+
+        function drawCoin(x, y) {
+            // Glowing coin
+            ctx.fillStyle = '#f1c40f';
+            ctx.beginPath();
+            ctx.arc(x + 10, y + 10, 10, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Shine
+            ctx.fillStyle = '#f9e547';
+            ctx.beginPath();
+            ctx.arc(x + 8, y + 7, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Dollar sign
+            ctx.fillStyle = '#e67e22';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('$', x + 10, y + 15);
+            ctx.textAlign = 'left';
+        }
+
+        function drawRamp(x, y) {
+            // Ramp body
+            ctx.fillStyle = '#3498db';
+            ctx.beginPath();
+            ctx.moveTo(x, y + 50);
+            ctx.lineTo(x + 20, y + 50);
+            ctx.lineTo(x + 10, y);
+            ctx.closePath();
+            ctx.fill();
+
+            // Ramp surface
+            ctx.fillStyle = '#5dade2';
+            ctx.beginPath();
+            ctx.moveTo(x + 3, y + 46);
+            ctx.lineTo(x + 17, y + 46);
+            ctx.lineTo(x + 10, y + 4);
+            ctx.closePath();
+            ctx.fill();
+
+            // Snow on ramp
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x, y + 50);
+            ctx.lineTo(x + 10, y);
+            ctx.stroke();
+        }
+
+        // Snowflakes
+        const snowflakes = [];
+        for (let i = 0; i < 60; i++) {
+            snowflakes.push({
+                x: Math.random() * 500,
+                y: Math.random() * 700,
+                size: 2 + Math.random() * 4,
+                speed: 0.5 + Math.random() * 1.5,
+                wobble: Math.random() * Math.PI * 2
+            });
+        }
+
+        function drawSnowflakes() {
+            for (const flake of snowflakes) {
+                flake.y += flake.speed;
+                flake.x += Math.sin(flake.wobble) * 0.5;
+                flake.wobble += 0.02;
+                if (flake.y > canvas.height) {
+                    flake.y = -5;
+                    flake.x = Math.random() * canvas.width;
+                }
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(flake.x, flake.y, flake.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function drawDancingSkier() {
+            const x = canvas.width / 2 - 15;
+            const y = canvas.height / 2 - 40;
+            const t = danceDuration - danceTimer;
+            const bounce = Math.sin(t * 0.3) * 12;
+            const sway = Math.sin(t * 0.2) * 10;
+            const armWave = Math.sin(t * 0.4) * 30;
+
+            // Confetti!
+            for (let i = 0; i < 20; i++) {
+                const cx = ((i * 73 + t * 3) % canvas.width);
+                const cy = ((i * 97 + t * 2) % canvas.height);
+                const colors = ['#e74c3c', '#f1c40f', '#2ecc71', '#9b59b6', '#3498db', '#ff69b4'];
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.fillRect(cx, cy, 8, 8);
+            }
+
+            ctx.save();
+            ctx.translate(x + 15 + sway, y + bounce);
+            ctx.scale(2.5, 2.5);
+
+            // Body (purple)
+            if (jacketColor === 'rainbow') {
+                const t2 = Date.now() * 0.005;
+                ctx.fillStyle = `hsl(${(t2 * 60) % 360}, 80%, 60%)`;
+            } else {
+                ctx.fillStyle = jacketColor;
+            }
+            ctx.fillRect(-7, 12, 14, 18);
+
+            // Head
+            ctx.fillStyle = '#fdbcb4';
+            ctx.beginPath();
+            ctx.arc(0, 8, 8, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Hair
+            ctx.fillStyle = '#8B4513';
+            ctx.beginPath();
+            ctx.arc(0, 5, 8, Math.PI, Math.PI * 2);
+            ctx.fill();
+            ctx.fillRect(-8, 5, 3, 12);
+            ctx.fillRect(5, 5, 3, 12);
+
+            // Hat
+            ctx.fillStyle = '#8e44ad';
+            ctx.beginPath();
+            ctx.arc(0, 3, 9, Math.PI, Math.PI * 2);
+            ctx.fill();
+
+            // Happy face
+            ctx.fillStyle = '#333';
+            ctx.beginPath();
+            ctx.arc(-3, 7, 1.5, 0, Math.PI * 2);
+            ctx.arc(3, 7, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+            // Big smile
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(0, 9, 4, 0.1, Math.PI - 0.1);
+            ctx.stroke();
+
+            // Waving arms!
+            ctx.strokeStyle = jacketColor === 'rainbow' ? `hsl(${(Date.now() * 0.005 * 60) % 360}, 80%, 60%)` : jacketColor;
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(-7, 16);
+            ctx.lineTo(-18, 5 - armWave);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(7, 16);
+            ctx.lineTo(18, 5 + armWave);
+            ctx.stroke();
+
+            // Skis
+            if (skiColor === 'rainbow') {
+                const t2 = Date.now() * 0.005;
+                ctx.fillStyle = `hsl(${(t2 * 60) % 360}, 80%, 60%)`;
+            } else {
+                ctx.fillStyle = skiColor;
+            }
+            ctx.fillRect(-13, 30, 10, 12);
+            ctx.fillRect(3, 30, 10, 12);
+
+            ctx.restore();
+
+            // "WOOHOO!" text
+            ctx.fillStyle = '#9b59b6';
+            ctx.font = 'bold 36px Arial';
+            ctx.textAlign = 'center';
+            const textBounce = Math.sin(t * 0.15) * 5;
+            ctx.fillText('WOOHOO!', canvas.width / 2, y - 20 + textBounce);
+            ctx.textAlign = 'left';
         }
 
         function drawFinishLine(y) {
@@ -455,7 +822,23 @@
 
         // Game loop
         function update() {
-            if (state !== 'playing') return;
+            // Victory dance countdown
+            if (state === 'dancing') {
+                danceTimer--;
+                if (danceTimer <= 0) {
+                    state = 'won';
+                    const winText = document.getElementById('winText');
+                    if (currentLevel >= totalLevels) {
+                        winText.textContent = 'You beat ALL 20 levels! Amazing!';
+                    } else {
+                        winText.textContent = 'Level ' + currentLevel + ' complete!';
+                    }
+                    document.getElementById('winScreen').style.display = 'flex';
+                }
+                return;
+            }
+
+            if (state !== 'playing' || shopOpen) return;
 
             // Scroll down automatically
             const scrollSpeed = 2 + currentLevel * 0.3;
@@ -486,7 +869,13 @@
                 if (skier.jumpTimer <= 0) {
                     skier.jumping = false;
                     skier.onRail = false;
+                    skier.slideDir = 0;
                 }
+            }
+
+            // Slide sideways on rail
+            if (skier.onRail) {
+                skier.x += skier.slideDir * 4;
             }
 
             // Check collisions with obstacles
@@ -498,14 +887,37 @@
                 const obsScreen = { x: obs.x, y: screenY, width: obs.width, height: obs.height };
                 const skierBox = { x: skier.x + 5, y: skier.y + 5, width: skier.width - 10, height: skier.height - 10 };
 
+                // Skip coins entirely
+                if (obs.type === 'coin') {
+                    if (!obs.collected && checkCollision(skierBox, obsScreen)) {
+                        obs.collected = true;
+                        coins++;
+                    }
+                    continue;
+                }
+
                 if (checkCollision(skierBox, obsScreen)) {
-                    if (obs.type === 'rail' && skier.jumping) {
-                        // Land on rail and slide!
+                    if (obs.type === 'ramp' && !skier.jumping) {
+                        // Hit a ramp — launch into the air!
+                        skier.jumping = true;
+                        skier.jumpTimer = obs.big ? 60 : 30; // big ramp = bigger jump!
+                    } else if (obs.type === 'rail' && skier.jumping) {
+                        // Land on rail and slide sideways!
                         skier.onRail = true;
                         skier.jumping = true;
-                        skier.jumpTimer = Math.max(skier.jumpTimer, 15);
+                        skier.jumpTimer = Math.max(skier.jumpTimer, 20);
+                        // Slide in the direction the skier was moving
+                        if (keys['ArrowLeft']) {
+                            skier.slideDir = -1;
+                        } else if (keys['ArrowRight']) {
+                            skier.slideDir = 1;
+                        } else if (skier.slideDir === 0) {
+                            skier.slideDir = 1; // default slide right
+                        }
                     } else if (obs.type === 'rail') {
                         // Rails don't hurt if you're not jumping — you just pass under
+                    } else if (obs.type === 'ramp') {
+                        // Already jumping over ramp, ignore
                     } else if (obs.type === 'tree') {
                         // Trees are too tall to jump over — always crash!
                         state = 'crashed';
@@ -522,19 +934,21 @@
 
             // Check finish line
             if (scrollY >= levelLength) {
-                state = 'won';
-                const winText = document.getElementById('winText');
-                if (currentLevel >= totalLevels) {
-                    winText.textContent = 'You beat ALL 20 levels! Amazing!';
-                } else {
-                    winText.textContent = 'Level ' + currentLevel + ' complete!';
-                }
-                document.getElementById('winScreen').style.display = 'flex';
+                state = 'dancing';
+                danceTimer = danceDuration;
             }
         }
 
         function draw() {
             drawSnow();
+
+            drawSnowflakes();
+
+            // Victory dance screen
+            if (state === 'dancing') {
+                drawDancingSkier();
+                return;
+            }
 
             // Draw finish line
             drawFinishLine(levelLength);
@@ -549,7 +963,11 @@
                 } else if (obs.type === 'rock') {
                     drawRock(obs.x, screenY);
                 } else if (obs.type === 'rail') {
-                    drawRail(obs.x, screenY, obs.width);
+                    drawRail(obs.x, screenY, obs.height);
+                } else if (obs.type === 'ramp') {
+                    drawRamp(obs.x, screenY);
+                } else if (obs.type === 'coin' && !obs.collected) {
+                    drawCoin(obs.x, screenY);
                 }
             }
 
@@ -565,6 +983,121 @@
             ctx.strokeStyle = '#8e44ad';
             ctx.lineWidth = 2;
             ctx.strokeRect(canvas.width - 25, 10, 15, canvas.height - 20);
+
+            // Coin counter
+            ctx.fillStyle = 'rgba(255,255,255,0.85)';
+            ctx.fillRect(10, 10, 80, 32);
+            ctx.strokeStyle = '#f1c40f';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(10, 10, 80, 32);
+            ctx.fillStyle = '#f1c40f';
+            ctx.beginPath();
+            ctx.arc(28, 26, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#e67e22';
+            ctx.font = 'bold 10px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('$', 28, 30);
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 18px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText(coins, 42, 32);
+
+            // Shop hint
+            if (state === 'playing') {
+                ctx.fillStyle = 'rgba(255,255,255,0.6)';
+                ctx.font = '11px Arial';
+                ctx.fillText('S = Shop', 10, 56);
+            }
+
+            // Draw shop if open
+            if (shopOpen) {
+                drawShop();
+            }
+        }
+
+        function drawShop() {
+            // Shop background
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = 'white';
+            ctx.fillRect(30, 40, canvas.width - 60, canvas.height - 80);
+            ctx.strokeStyle = '#f1c40f';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(30, 40, canvas.width - 60, canvas.height - 80);
+
+            // Title
+            ctx.fillStyle = '#9b59b6';
+            ctx.font = 'bold 28px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Ski Shop', canvas.width / 2, 80);
+
+            // Coins
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 18px Arial';
+            ctx.fillText('Your coins: ' + coins, canvas.width / 2, 110);
+
+            // Ski options — scroll if needed
+            const startY = 130;
+            const itemH = 38;
+            const maxVisible = Math.floor((canvas.height - 200) / itemH);
+            let scrollOffset = Math.max(0, shopSelection - maxVisible + 2);
+            for (let i = scrollOffset; i < Math.min(skiShop.length, scrollOffset + maxVisible); i++) {
+                const item = skiShop[i];
+                const y = startY + (i - scrollOffset) * itemH;
+                const selected = i === shopSelection;
+
+                // Highlight selected
+                if (selected) {
+                    ctx.fillStyle = '#f0e6ff';
+                    ctx.fillRect(40, y, canvas.width - 80, itemH - 5);
+                }
+
+                // Color preview
+                if (item.color === 'rainbow') {
+                    const t = Date.now() * 0.005;
+                    ctx.fillStyle = `hsl(${(t * 60) % 360}, 80%, 60%)`;
+                } else {
+                    ctx.fillStyle = item.color;
+                }
+                if (item.type === 'ski') {
+                    ctx.fillRect(55, y + 10, 40, 10);
+                } else {
+                    // Jacket shape
+                    ctx.fillRect(60, y + 5, 24, 22);
+                    ctx.fillRect(54, y + 5, 8, 16);
+                    ctx.fillRect(82, y + 5, 8, 16);
+                }
+
+                // Name
+                ctx.fillStyle = '#333';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'left';
+                ctx.fillText(item.name, 110, y + 24);
+
+                // Status
+                ctx.font = '14px Arial';
+                const isWearing = (item.type === 'ski' && item.color === skiColor) ||
+                                  (item.type === 'jacket' && item.color === jacketColor);
+                if (isWearing) {
+                    ctx.fillStyle = '#27ae60';
+                    ctx.fillText('WEARING', 110, y + 42);
+                } else if (item.owned) {
+                    ctx.fillStyle = '#3498db';
+                    ctx.fillText('Owned - press Enter to wear', 110, y + 42);
+                } else {
+                    ctx.fillStyle = '#e67e22';
+                    ctx.fillText(item.price + ' coins', 110, y + 42);
+                }
+            }
+
+            // Instructions
+            ctx.fillStyle = '#888';
+            ctx.font = '13px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Up/Down to browse, Enter to buy/wear, S to close', canvas.width / 2, canvas.height - 50);
+            ctx.textAlign = 'left';
         }
 
         function gameLoop() {
