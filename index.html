@@ -77,8 +77,28 @@
         }
         #startScreen h1 {
             font-size: 36px;
-            color: #9b59b6;
             margin-bottom: 8px;
+            background: linear-gradient(
+                90deg,
+                #9b59b6 0%,
+                #9b59b6 30%,
+                #e74c3c 40%,
+                #f1c40f 50%,
+                #2ecc71 55%,
+                #3498db 60%,
+                #9b59b6 70%,
+                #9b59b6 100%
+            );
+            background-size: 300% 100%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shimmer 3s ease-in-out infinite;
+        }
+        @keyframes shimmer {
+            0% { background-position: 100% 0; }
+            50% { background-position: 0% 0; }
+            100% { background-position: 100% 0; }
         }
         #startScreen p, #crashScreen p, #winScreen p {
             font-size: 18px;
