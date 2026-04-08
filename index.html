@@ -331,7 +331,7 @@
                                 doEquip(item);
                             } else {
                                 shopMessage = 'Not enough coins!';
-                                shopMessageTimer = 120;
+                                shopMessageTimer = 45;
                             }
                         } else if (shopConfirm.action === 'wear') {
                             doEquip(item);
@@ -461,7 +461,7 @@
                                     else if (item.type === 'goggles') gogglesColor = item.color;
                                 } else {
                                     shopMessage = 'Not enough coins!';
-                                    shopMessageTimer = 120;
+                                    shopMessageTimer = 45;
                                 }
                             } else if (shopConfirm.action === 'wear') {
                                 if (item.type === 'ski') skiColor = item.color;
@@ -1320,11 +1320,11 @@
             ctx.textAlign = 'left';
             ctx.fillText(coins, 42, 32);
 
-            // Shop hint
-            if (state === 'playing' && !shopOpen) {
-                ctx.fillStyle = 'rgba(255,255,255,0.6)';
-                ctx.font = '11px Arial';
-                ctx.fillText(isMobile ? 'Tap SHOP below' : 'S = Shop', 10, 56);
+            // Shop hint (PC only)
+            if (state === 'playing' && !shopOpen && !isMobile) {
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.font = 'bold 13px Arial';
+                ctx.fillText('Press S for Shop', 10, 56);
             }
 
             // Draw shop if open
