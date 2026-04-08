@@ -332,6 +332,9 @@
                         coins -= item.price;
                         item.owned = true;
                         equipItem(item);
+                    } else {
+                        shopMessage = 'Not enough coins!';
+                        shopMessageTimer = 120;
                     }
                 }
             }
@@ -427,14 +430,18 @@
                     if (shopConfirm) {
                         if (hitRect(shopYesBtnRect)) {
                             const item = skiShop[shopConfirm.index];
-                            if (shopConfirm.action === 'buy' && coins >= item.price) {
-                                coins -= item.price;
-                                item.owned = true;
-                                // Auto-equip after buying
-                                if (item.type === 'ski') skiColor = item.color;
-                                else if (item.type === 'jacket') jacketColor = item.color;
-                                else if (item.type === 'helmet') helmetColor = item.color;
-                                else if (item.type === 'goggles') gogglesColor = item.color;
+                            if (shopConfirm.action === 'buy') {
+                                if (coins >= item.price) {
+                                    coins -= item.price;
+                                    item.owned = true;
+                                    if (item.type === 'ski') skiColor = item.color;
+                                    else if (item.type === 'jacket') jacketColor = item.color;
+                                    else if (item.type === 'helmet') helmetColor = item.color;
+                                    else if (item.type === 'goggles') gogglesColor = item.color;
+                                } else {
+                                    shopMessage = 'Not enough coins!';
+                                    shopMessageTimer = 120;
+                                }
                             } else if (shopConfirm.action === 'wear') {
                                 if (item.type === 'ski') skiColor = item.color;
                                 else if (item.type === 'jacket') jacketColor = item.color;
@@ -1310,6 +1317,8 @@
         let shopYesBtnRect = null;
         let shopNoBtnRect = null;
         let shopScrollTop = 0; // first visible item index
+        let shopMessage = ''; // temporary message like "Not enough coins!"
+        let shopMessageTimer = 0;
 
         function isWearingItem(item) {
             return (item.type === 'ski' && item.color === skiColor) ||
@@ -1444,6 +1453,20 @@
             // Confirmation dialog overlay
             if (shopConfirm && isMobile) {
                 drawShopConfirm();
+            }
+
+            // "Not enough coins" message (both PC and mobile)
+            if (shopMessageTimer > 0) {
+                shopMessageTimer--;
+                ctx.fillStyle = 'rgba(231,76,60,0.9)';
+                const msgW = 220;
+                const msgH = 36;
+                ctx.fillRect((canvas.width - msgW) / 2, canvas.height / 2 - msgH / 2, msgW, msgH);
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(shopMessage, canvas.width / 2, canvas.height / 2 + 6);
+                ctx.textAlign = 'left';
             }
         }
 
