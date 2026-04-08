@@ -1307,6 +1307,22 @@
             if (shopOpen) {
                 drawShop();
             }
+
+            // "Not enough coins" message — drawn on top of EVERYTHING
+            if (shopMessageTimer > 0) {
+                shopMessageTimer--;
+                ctx.fillStyle = 'rgba(0,0,0,0.4)';
+                ctx.fillRect(0, canvas.height / 2 - 30, canvas.width, 60);
+                ctx.fillStyle = 'rgba(231,76,60,0.95)';
+                const msgW = 250;
+                const msgH = 40;
+                ctx.fillRect((canvas.width - msgW) / 2, canvas.height / 2 - msgH / 2, msgW, msgH);
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 18px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(shopMessage, canvas.width / 2, canvas.height / 2 + 7);
+                ctx.textAlign = 'left';
+            }
         }
 
         // Mobile shop state
@@ -1455,19 +1471,6 @@
                 drawShopConfirm();
             }
 
-            // "Not enough coins" message (both PC and mobile)
-            if (shopMessageTimer > 0) {
-                shopMessageTimer--;
-                ctx.fillStyle = 'rgba(231,76,60,0.9)';
-                const msgW = 220;
-                const msgH = 36;
-                ctx.fillRect((canvas.width - msgW) / 2, canvas.height / 2 - msgH / 2, msgW, msgH);
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 16px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText(shopMessage, canvas.width / 2, canvas.height / 2 + 6);
-                ctx.textAlign = 'left';
-            }
         }
 
         function drawShopConfirm() {
