@@ -310,6 +310,8 @@
             // Shop controls
             if (e.code === 'KeyS' && (state === 'playing' || shopOpen)) {
                 shopOpen = !shopOpen;
+                shopMessageTimer = 0;
+                shopConfirm = null;
             }
             if (shopOpen) {
                 // If confirmation dialog is showing
@@ -543,6 +545,7 @@
                 shopOpen = !shopOpen;
                 shopConfirm = null;
                 shopScrollTop = 0;
+                shopMessageTimer = 0;
             }
         }, { passive: false });
 
@@ -1159,14 +1162,16 @@
             // Move skier left/right
             if (keys['ArrowLeft']) {
                 skier.x -= skier.speed;
+                shopMessageTimer = 0;
             }
             if (keys['ArrowRight']) {
                 skier.x += skier.speed;
+                shopMessageTimer = 0;
             }
 
             // Touch controls
-            if (touchMoving === 'left') skier.x -= skier.speed;
-            if (touchMoving === 'right') skier.x += skier.speed;
+            if (touchMoving === 'left') { skier.x -= skier.speed; shopMessageTimer = 0; }
+            if (touchMoving === 'right') { skier.x += skier.speed; shopMessageTimer = 0; }
 
             // Keep skier on screen
             if (skier.x < 0) skier.x = 0;
@@ -1315,11 +1320,11 @@
             ctx.textAlign = 'left';
             ctx.fillText(coins, 42, 32);
 
-            // Shop hint (desktop only)
-            if (state === 'playing' && !isMobile) {
+            // Shop hint
+            if (state === 'playing' && !shopOpen) {
                 ctx.fillStyle = 'rgba(255,255,255,0.6)';
                 ctx.font = '11px Arial';
-                ctx.fillText('S = Shop', 10, 56);
+                ctx.fillText(isMobile ? 'Tap SHOP below' : 'S = Shop', 10, 56);
             }
 
             // Draw shop if open
