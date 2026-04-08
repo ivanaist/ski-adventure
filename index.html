@@ -312,29 +312,48 @@
                 shopOpen = !shopOpen;
             }
             if (shopOpen) {
-                if (e.code === 'ArrowUp') {
-                    shopSelection = Math.max(0, shopSelection - 1);
-                }
-                if (e.code === 'ArrowDown') {
-                    shopSelection = Math.min(skiShop.length - 1, shopSelection + 1);
-                }
-                if (e.code === 'Enter') {
-                    const item = skiShop[shopSelection];
-                    function equipItem(item) {
-                        if (item.type === 'ski') skiColor = item.color;
-                        else if (item.type === 'jacket') jacketColor = item.color;
-                        else if (item.type === 'helmet') helmetColor = item.color;
-                        else if (item.type === 'goggles') gogglesColor = item.color;
+                // If confirmation dialog is showing
+                if (shopConfirm) {
+                    if (e.code === 'KeyY' || e.code === 'Enter') {
+                        const item = skiShop[shopConfirm.index];
+                        function doEquip(it) {
+                            if (it.type === 'ski') skiColor = it.color;
+                            else if (it.type === 'jacket') jacketColor = it.color;
+                            else if (it.type === 'helmet') helmetColor = it.color;
+                            else if (it.type === 'goggles') gogglesColor = it.color;
+                        }
+                        if (shopConfirm.action === 'buy') {
+                            if (coins >= item.price) {
+                                coins -= item.price;
+                                item.owned = true;
+                                doEquip(item);
+                            } else {
+                                shopMessage = 'Not enough coins!';
+                                shopMessageTimer = 120;
+                            }
+                        } else if (shopConfirm.action === 'wear') {
+                            doEquip(item);
+                        }
+                        shopConfirm = null;
+                    } else if (e.code === 'KeyN' || e.code === 'Escape') {
+                        shopConfirm = null;
                     }
-                    if (item.owned) {
-                        equipItem(item);
-                    } else if (coins >= item.price) {
-                        coins -= item.price;
-                        item.owned = true;
-                        equipItem(item);
-                    } else {
-                        shopMessage = 'Not enough coins!';
-                        shopMessageTimer = 120;
+                } else {
+                    if (e.code === 'ArrowUp') {
+                        shopSelection = Math.max(0, shopSelection - 1);
+                    }
+                    if (e.code === 'ArrowDown') {
+                        shopSelection = Math.min(skiShop.length - 1, shopSelection + 1);
+                    }
+                    if (e.code === 'Enter') {
+                        const item = skiShop[shopSelection];
+                        if (isWearingItem(item)) {
+                            // Already wearing
+                        } else if (item.owned) {
+                            shopConfirm = { index: shopSelection, action: 'wear' };
+                        } else {
+                            shopConfirm = { index: shopSelection, action: 'buy' };
+                        }
                     }
                 }
             }
@@ -1305,7 +1324,10 @@
 
             // Draw shop if open
             if (shopOpen) {
+                document.getElementById('levelDisplay').style.display = 'none';
                 drawShop();
+            } else {
+                document.getElementById('levelDisplay').style.display = '';
             }
 
             // "Not enough coins" message — drawn on top of EVERYTHING
@@ -1462,12 +1484,12 @@
                 ctx.fillStyle = '#888';
                 ctx.font = '13px Arial';
                 ctx.textAlign = 'center';
-                ctx.fillText('Up/Down to browse, Enter to buy/wear, S to close', canvas.width / 2, shopY + shopH - 15);
+                ctx.fillText('Up/Down to browse, Enter to select, S to close', canvas.width / 2, shopY + shopH - 15);
                 ctx.textAlign = 'left';
             }
 
-            // Confirmation dialog overlay
-            if (shopConfirm && isMobile) {
+            // Confirmation dialog overlay (both PC and mobile)
+            if (shopConfirm) {
                 drawShopConfirm();
             }
 
@@ -1511,7 +1533,7 @@
             ctx.fillRect(yesX, yesY, btnW, btnH);
             ctx.fillStyle = '#fff';
             ctx.font = 'bold 18px Arial';
-            ctx.fillText('YES', yesX + btnW / 2, yesY + 26);
+            ctx.fillText(isMobile ? 'YES' : 'YES (Y)', yesX + btnW / 2, yesY + 26);
             shopYesBtnRect = { x: yesX, y: yesY, w: btnW, h: btnH };
 
             // NO button
@@ -1519,7 +1541,7 @@
             ctx.fillStyle = '#e74c3c';
             ctx.fillRect(noX, yesY, btnW, btnH);
             ctx.fillStyle = '#fff';
-            ctx.fillText('NO', noX + btnW / 2, yesY + 26);
+            ctx.fillText(isMobile ? 'NO' : 'NO (N)', noX + btnW / 2, yesY + 26);
             shopNoBtnRect = { x: noX, y: yesY, w: btnW, h: btnH };
 
             ctx.textAlign = 'left';
